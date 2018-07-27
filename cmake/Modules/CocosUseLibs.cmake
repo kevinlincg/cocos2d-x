@@ -5,7 +5,7 @@ macro(cocos2d_depend_libs)
     set(PREBUILT_SPECIFIC_LIBS)
 
     if(WINDOWS)
-        foreach(_pkg OPENGL GLEW GLFW3 VORBIS MPG123 OPENAL)
+        foreach(_pkg OPENGL GLEW GLFW3 VORBIS MPG123 OPENAL SQLITE3)
             list(APPEND PREBUILT_SPECIFIC_LIBS ${_pkg})
         endforeach()
         list(APPEND PLATFORM_SPECIFIC_LIBS ws2_32 winmm Version Iphlpapi)
@@ -15,7 +15,7 @@ macro(cocos2d_depend_libs)
     elseif(LINUX)
         # need review those libs: X11 Xi Xrandr Xxf86vm Xinerama Xcursor rt m
         list(APPEND PLATFORM_SPECIFIC_LIBS dl X11 Xi Xrandr Xxf86vm Xinerama Xcursor rt m)
-        foreach(_pkg OPENGL GLEW GLFW3 FMOD FONTCONFIG THREADS GTK3)
+        foreach(_pkg OPENGL GLEW GLFW3 FMOD FONTCONFIG THREADS GTK3 SQLITE3)
             list(APPEND PREBUILT_SPECIFIC_LIBS ${_pkg})
         endforeach()
     elseif(ANDROID)
@@ -29,12 +29,14 @@ macro(cocos2d_depend_libs)
         find_library(FOUNDATION_LIBRARY Foundation)
         find_library(OPENAL_LIBRARY OpenAL)
         find_library(QUARTZCORE_LIBRARY QuartzCore)
+        find_library(GAMECONTROLLER_LIBRARY GameController)
         set(COCOS_APPLE_LIBS
             ${OPENAL_LIBRARY}
             ${AUDIOTOOLBOX_LIBRARY}
             ${QUARTZCORE_LIBRARY}
             ${FOUNDATION_LIBRARY}
             ${ICONV_LIBRARY}
+            ${GAMECONTROLLER_LIBRARY}
             )
 
         if(MACOSX)
@@ -77,7 +79,7 @@ macro(cocos2d_depend_libs)
         endif()
     endif()
 
-    foreach(_pkg ZLIB MINIZIP TinyXML2 FREETYPE WEBSOCKETS CURL FLATBUFFERS XXHASH SQLITE3)
+    foreach(_pkg ZLIB MINIZIP TinyXML2 FREETYPE WEBSOCKETS CURL FLATBUFFERS XXHASH)
         list(APPEND PREBUILT_SPECIFIC_LIBS ${_pkg})
     endforeach()
 
@@ -164,8 +166,7 @@ macro(jscocos2d_depend_libs)
 
     list(APPEND PREBUILT_SPECIFIC_LIBS SPIDERMONKEY)
     if(APPLE)
-        find_library(GAME_CONTROLLER GameController)
-        list(APPEND PLATFORM_SPECIFIC_LIBS ${GAME_CONTROLLER})
+        list(APPEND PREBUILT_SPECIFIC_LIBS SQLITE3)
     endif()
 endmacro()
 

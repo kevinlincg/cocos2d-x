@@ -10,35 +10,33 @@ function(cocos_find_prebuilt_lib_by_name lib_name lib_out)
     find_library(found_lib ${lib_name} PATHS ${search_path} NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
 
     if(found_lib)
-        message(STATUS "find cocos prebuilt library: ${found_lib}")
+        message(STATUS "found cocos prebuilt library: ${found_lib}")
     else()
-        message(STATUS "can't find cocos prebuilt library: ${lib_name}")
+        message(STATUS "can't found cocos prebuilt library: ${lib_name}")
     endif()
     set(${lib_out} ${found_lib} PARENT_SCOPE)
     unset(found_lib CACHE)
 endfunction()
 
-# copy resource `FILES` and `FOLDERS` to `COPY_TO` folder before `cocos_target` build
-function(cocos_copy_target_res cocos_target)
+# copy resource `FILES` and `FOLDERS` to `COPY_TO` folder
+function(cocos_copy_res)
     set(oneValueArgs COPY_TO)
     set(multiValueArgs FILES FOLDERS)
     cmake_parse_arguments(opt "" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     # copy files
     foreach(cc_file ${opt_FILES})
         get_filename_component(file_name ${cc_file} NAME)
-        add_custom_command(TARGET ${cocos_target} PRE_BUILD
-                           COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                           ${cc_file}
-                           "${opt_COPY_TO}/${file_name}"
-                           )
+        configure_file(${cc_file} "${opt_COPY_TO}/${file_name}" COPYONLY)
     endforeach()
-    # copy folders
+    # copy folders files
     foreach(cc_folder ${opt_FOLDERS})
-        add_custom_command(TARGET ${cocos_target} PRE_BUILD
-                           COMMAND ${CMAKE_COMMAND} -E copy_directory
-                           ${cc_folder}
-                           ${opt_COPY_TO}
-                           )
+        file(GLOB_RECURSE folder_files "${cc_folder}/*")
+        get_filename_component(folder_abs_path ${cc_folder} ABSOLUTE)
+        foreach(res_file ${folder_files})
+            get_filename_component(res_file_abs_path ${res_file} ABSOLUTE)
+            file(RELATIVE_PATH res_file_relat_path ${folder_abs_path} ${res_file_abs_path})
+            configure_file(${res_file} "${opt_COPY_TO}/${res_file_relat_path}" COPYONLY)
+        endforeach()
     endforeach()
 endfunction()
 
@@ -107,13 +105,10 @@ function(cocos_copy_target_dll cocos_target)
     # remove repeat items
     list(REMOVE_DUPLICATES all_depend_dlls)
     message(STATUS "prepare to copy external dlls for ${cocos_target}:${all_depend_dlls}")
-    foreach(single_target_dll ${all_depend_dlls})
-        add_custom_command(TARGET ${cocos_target} PRE_BUILD
-                           COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                           ${single_target_dll}
-                           ${opt_COPY_TO}
-                           )
-    endforeach(single_target_dll)
+    foreach(cc_dll_file ${all_depend_dlls})
+        get_filename_component(cc_dll_name ${cc_dll_file} NAME)
+        configure_file(${cc_dll_file} "${opt_COPY_TO}/${cc_dll_name}" COPYONLY)
+    endforeach()
 endfunction()
 
 # find dlls in a dir which `LIB_ABS_PATH` located, and save the result in `dlls_out`
@@ -227,8 +222,9 @@ function(cocos_build_app app_name)
         set_target_properties(${app_name} PROPERTIES MACOSX_BUNDLE 1
                               )
     elseif(MSVC)
+        # only Debug and Release mode was supported when using MSVC.
         set(APP_BIN_DIR "${CMAKE_BINARY_DIR}/bin/${APP_NAME}/$<CONFIG>")
-        set(APP_RES_DIR "${APP_BIN_DIR}")
+        set(APP_RES_DIR "${CMAKE_BINARY_DIR}/bin/${APP_NAME}/${CMAKE_BUILD_TYPE}")
         #Visual Studio Defaults to wrong type
         set_target_properties(${app_name} PROPERTIES LINK_FLAGS "/SUBSYSTEM:WINDOWS")
     else(LINUX)
@@ -334,9 +330,34 @@ macro(cocos_pak_xcode cocos_target)
 
     message("cocos package: ${cocos_target}, plist file: ${COCOS_APP_INFO_PLIST}")
 
+   cocos_config_app_xcode_property(${cocos_target})
+endmacro()
+
+# set Xcode property for application, include all depend target
+macro(cocos_config_app_xcode_property cocos_app)
+    cocos_config_target_xcode_property(${cocos_app})
+    # for example, cocos_target: cpp-tests link engine_lib: cocos2d
+    get_target_property(engine_libs ${cocos_app} LINK_LIBRARIES)
+    foreach(engine_lib ${engine_libs})
+        if(TARGET ${engine_lib})
+            cocos_config_target_xcode_property(${engine_lib})
+            # for example, engine_lib: cocos2d link external_lib: flatbuffers
+            get_target_property(external_libs ${engine_lib} LINK_LIBRARIES)
+            foreach(external_lib ${external_libs})
+                if(TARGET ${external_lib})
+                    cocos_config_target_xcode_property(${external_lib})
+                endif()
+            endforeach()
+        endif()
+    endforeach()
+endmacro()
+
+# custom Xcode property for iOS target
+macro(cocos_config_target_xcode_property cocos_target)
     if(IOS)
         set_xcode_property(${cocos_target} IPHONEOS_DEPLOYMENT_TARGET "8.0")
         set_xcode_property(${cocos_target} ENABLE_BITCODE "NO")
+        set_xcode_property(${cocos_target} ONLY_ACTIVE_ARCH "YES")
     endif()
 endmacro()
 

@@ -1,10 +1,7 @@
-import org.apache.tools.ant.taskdefs.condition.Os
-
 apply plugin: 'com.android.application'
 
 android {
     compileSdkVersion PROP_COMPILE_SDK_VERSION.toInteger()
-    buildToolsVersion PROP_BUILD_TOOLS_VERSION
 
     defaultConfig {
         applicationId "org.cocos2dx.performance_tests"
