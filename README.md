@@ -1,7 +1,7 @@
 <img src="http://www.cocos2d-x.org/attachments/801/cocos2dx_portrait.png" width=200>
 
 
-Kevin cocos2d-x
+cocos2d-x
 =========
 
 |Win32|Others|
